@@ -147,6 +147,22 @@ export const GlassOpacity = Schema.Int.check(
 export type GlassOpacity = typeof GlassOpacity.Type;
 const DEFAULT_GLASS_OPACITY: GlassOpacity = 80;
 
+export const AppSkinFit = Schema.Literals(["cover", "contain", "fill", "center", "tile"]);
+export type AppSkinFit = typeof AppSkinFit.Type;
+export const DEFAULT_APP_SKIN_FIT: AppSkinFit = "cover";
+
+/** Percent of the theme canvas color laid over a custom skin image, so text stays legible. */
+export const MIN_APP_SKIN_VEIL = 0;
+export const MAX_APP_SKIN_VEIL = 95;
+export const AppSkinVeil = Schema.Int.check(
+  Schema.isBetween({
+    minimum: MIN_APP_SKIN_VEIL,
+    maximum: MAX_APP_SKIN_VEIL,
+  }),
+);
+export type AppSkinVeil = typeof AppSkinVeil.Type;
+export const DEFAULT_APP_SKIN_VEIL: AppSkinVeil = 70;
+
 export const MIN_APPEARANCE_CONTRAST = 50;
 export const MAX_APPEARANCE_CONTRAST = 200;
 export const AppearanceContrast = Schema.Int.check(
@@ -488,6 +504,8 @@ export const ClientSettingsSchema = Schema.Struct({
   glassOpacity: GlassOpacity.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_GLASS_OPACITY)),
   ),
+  appSkinFit: AppSkinFit.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_APP_SKIN_FIT))),
+  appSkinVeil: AppSkinVeil.pipe(Schema.withDecodingDefault(Effect.succeed(DEFAULT_APP_SKIN_VEIL))),
   fontSizeInterface: InterfaceFontSize.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_INTERFACE_FONT_SIZE)),
   ),
@@ -2102,6 +2120,8 @@ export const ClientSettingsPatch = Schema.Struct({
   diffLayout: Schema.optionalKey(DiffLayout),
   environmentIdentificationMode: Schema.optionalKey(EnvironmentIdentificationMode),
   glassOpacity: Schema.optionalKey(GlassOpacity),
+  appSkinFit: Schema.optionalKey(AppSkinFit),
+  appSkinVeil: Schema.optionalKey(AppSkinVeil),
   onboardingCompletedAt: Schema.optionalKey(Schema.NullOr(Schema.String)),
   fontSizeInterface: Schema.optionalKey(InterfaceFontSize),
   fontSizePrompt: Schema.optionalKey(PromptFontSize),

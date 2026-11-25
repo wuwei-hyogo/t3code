@@ -6,6 +6,8 @@
 @custom-variant light (&:not(.dark, .dark *));
 /* Window Controls Overlay: active when Electron exposes native titlebar control geometry. */
 @custom-variant wco (&:is(.wco, .wco *));
+/* A custom skin image is showing (appSkin.ts); page-level surfaces clear their fill. */
+@custom-variant skin (&:is([data-app-skin] *));
 
 /* Secondary hovering pointers reveal sidebar actions on touch-primary devices. */
 @custom-variant any-hover {
@@ -1799,6 +1801,53 @@ body {
   background-image: var(--surface-grain);
   background-repeat: repeat;
   background-size: var(--surface-grain-size);
+}
+
+/* Custom skin layer, inserted by appSkin.ts. It is a negative z-index child of
+   the root, so it paints above the html canvas and below every in-flow
+   surface; its own compositor layer keeps an animated GIF from repainting
+   the app above it on every frame. syncBrowserChromeTheme paints body with an
+   inline color, hence !important; html keeps it as the canvas under the image. */
+html[data-app-skin] body {
+  background: transparent !important;
+}
+
+#app-skin-layer {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  contain: strict;
+  will-change: transform;
+  background-image: var(--app-skin-image);
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: cover;
+}
+
+#app-skin-layer[data-fit="contain"] {
+  background-size: contain;
+}
+
+#app-skin-layer[data-fit="fill"] {
+  background-size: 100% 100%;
+}
+
+#app-skin-layer[data-fit="center"] {
+  background-size: auto;
+}
+
+#app-skin-layer[data-fit="tile"] {
+  background-position: 0 0;
+  background-repeat: repeat;
+  background-size: auto;
+}
+
+#app-skin-layer::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-color: color-mix(in srgb, var(--background) var(--app-skin-veil, 70%), transparent);
 }
 
 pre,

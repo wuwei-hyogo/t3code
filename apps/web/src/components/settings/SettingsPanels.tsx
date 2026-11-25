@@ -3,10 +3,11 @@ import { m as resolveMessage } from "~/i18n/messages";
 import { useAtomValue } from "@effect/atom-react";
 import { NotificationSettings } from "./NotificationSettings";
 import { PRIVACY_POLICY_URL } from "../../legalLinks";
+import { getAppSkinSnapshot, removeAppSkinImage, subscribeAppSkin } from "../../appSkin";
 import { CheckIcon } from "lucide-react";
 import { msg, T, useGT, useMessages } from "gt-react";
 import { Link, useNavigate } from "@tanstack/react-router";
-import { useRef, useState } from "react";
+import { useRef, useState, useSyncExternalStore } from "react";
 import {
   type DesktopUpdateChannel,
   IDLE_COMPACTION_MODES,
@@ -491,6 +492,7 @@ export function useSettingsRestore(onRestored?: () => void) {
   } = useTheme();
   const settings = useScopedSettings();
   const updateSettings = useUpdateScopedSettings();
+  const skin = useSyncExternalStore(subscribeAppSkin, getAppSkinSnapshot, () => null);
 
   const isTextGenerationModelDirty = !Equal.equals(
     settings.textGenerationModelSelection ?? null,
@@ -508,6 +510,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     ...(settings.glassOpacity !== DEFAULT_UNIFIED_SETTINGS.glassOpacity
       ? [gt("Glass opacity")]
       : []),
+    ...(skin !== null ? [gt("Skin")] : []),
+    ...(settings.appSkinFit !== DEFAULT_UNIFIED_SETTINGS.appSkinFit ? [gt("Image fit")] : []),
+    ...(settings.appSkinVeil !== DEFAULT_UNIFIED_SETTINGS.appSkinVeil ? [gt("Tint")] : []),
     ...(settings.diffColorScheme !== DEFAULT_UNIFIED_SETTINGS.diffColorScheme
       ? [gt("Diff colors")]
       : []),
@@ -705,6 +710,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       notifyThemeRestoreFailure();
       return;
     }
+    if (getAppSkinSnapshot() !== null) void removeAppSkinImage();
     updateSettings({
       appearanceContrast: DEFAULT_UNIFIED_SETTINGS.appearanceContrast,
       diffColorScheme: DEFAULT_UNIFIED_SETTINGS.diffColorScheme,
@@ -731,6 +737,8 @@ export function useSettingsRestore(onRestored?: () => void) {
       screenReaderWindowTitle: DEFAULT_UNIFIED_SETTINGS.screenReaderWindowTitle,
       environmentIdentificationMode: DEFAULT_UNIFIED_SETTINGS.environmentIdentificationMode,
       glassOpacity: DEFAULT_UNIFIED_SETTINGS.glassOpacity,
+      appSkinFit: DEFAULT_UNIFIED_SETTINGS.appSkinFit,
+      appSkinVeil: DEFAULT_UNIFIED_SETTINGS.appSkinVeil,
       panelAnimationDurationMs: DEFAULT_UNIFIED_SETTINGS.panelAnimationDurationMs,
       sidebarProjectGroupingMode: DEFAULT_UNIFIED_SETTINGS.sidebarProjectGroupingMode,
       sidebarProjectSortOrder: DEFAULT_UNIFIED_SETTINGS.sidebarProjectSortOrder,

@@ -34,6 +34,7 @@ import {
 } from "./settingsLayout";
 import { useSearchableSetting } from "./settingsSearch";
 import { AdvancedSettings } from "./AdvancedSettings";
+import { AppSkinSection } from "./AppSkinSettings";
 import { PanelAnimationsPreview } from "./PanelAnimationsPreview";
 import { TypographySection } from "./TypographySettings";
 import { ThreadDetailsItemsRow } from "./ThreadDetailsItemsRow";
@@ -166,6 +167,8 @@ export function AppearanceSettingsPanel() {
           />
         </div>
       </SettingsSection>
+
+      <AppSkinSection />
 
       <SettingsSection id="appearance-interface" title={gt("Interface")}>
         <SettingsRow

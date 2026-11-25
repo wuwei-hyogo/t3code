@@ -286,7 +286,12 @@ export function syncBrowserChromeTheme() {
     getComputedStyle(resolveBrowserChromeSurface()).backgroundColor,
   );
   const fallbackColor = normalizeThemeColor(getComputedStyle(document.body).backgroundColor);
-  const backgroundColor = themeChromeColor ?? surfaceColor ?? fallbackColor;
+  // A custom skin clears the surface and body fills, leaving only the token.
+  const backgroundColor =
+    themeChromeColor ??
+    surfaceColor ??
+    fallbackColor ??
+    normalizeThemeColor(rootStyles.getPropertyValue("--app-chrome-background"));
   if (!backgroundColor) return;
 
   document.documentElement.style.backgroundColor = backgroundColor;

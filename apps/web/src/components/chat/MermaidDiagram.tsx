@@ -212,7 +212,8 @@ function diagramImageUrl(svg: SVGSVGElement): string {
     if (value) element.style.setProperty(name, value);
   }
   element.style.maxWidth = "none";
-  element.style.backgroundColor = getComputedStyle(document.body).backgroundColor;
+  // html, not body: a custom skin makes body transparent.
+  element.style.backgroundColor = getComputedStyle(document.documentElement).backgroundColor;
   if (expandedImageUrl) URL.revokeObjectURL(expandedImageUrl);
   expandedImageUrl = URL.createObjectURL(
     new Blob([new XMLSerializer().serializeToString(element)], { type: "image/svg+xml" }),

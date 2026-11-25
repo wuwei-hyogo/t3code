@@ -138,7 +138,7 @@ export function WorkflowsPage() {
         {/* Below md there is room for one thing, and an open pane is that thing. */}
         <div
           className={cn(
-            "min-h-0 min-w-0 flex-1 flex-col bg-background",
+            "min-h-0 min-w-0 flex-1 flex-col bg-background skin:bg-transparent",
             paneOpen ? "hidden md:flex" : "flex",
           )}
         >

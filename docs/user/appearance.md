@@ -48,6 +48,17 @@ The main sidebar, right panel, and terminal drawer open and close immediately by
 in your operating system. Moving between threads always snaps to the selected thread's panel state
 without replaying its transitions.
 
+## Skin
+
+On web and desktop, choose **Choose image** under **Skin** in **Settings → Appearance** to show
+your own picture behind the sidebar and chat. PNG, JPEG, GIF, WebP, AVIF, and BMP files up to 32 MB
+work, and animated GIFs play. **Image fit** sets how the picture fills the window, and **Tint**
+lays the theme's color over it so text stays readable in light and dark mode.
+
+The terminal, diffs, previews, and cards keep their solid backgrounds. The skin is saved on the
+device or browser where you chose it; mobile does not show it. An animated skin redraws the
+window continuously, which uses more power on battery. Use the trash button to remove it.
+
 ## Custom themes
 
 On web and desktop, choose **Create theme** to adjust a palette, or import a T3 Code or VS Code
@@ -135,7 +146,8 @@ Invalid files are not published.
 
 ### Background image
 
-A published theme can have a full-size background image. Ask an agent, for example "use
+A published theme can have a full-size background image. For a picture only on your own device, use
+a [skin](#skin) instead. Ask an agent, for example "use
 ~/Pictures/wallpaper.jpg as T3 Code's background", or save a JPEG, PNG, or WebP file of up to
 16 MB beside the theme file: `nightfall.jpg` beside `nightfall.json`. The theme's CSS decides
 where the image shows:

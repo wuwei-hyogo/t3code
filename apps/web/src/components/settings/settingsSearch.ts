@@ -353,6 +353,12 @@ export const SETTINGS_SEARCH_ITEMS = [
     targetId: "appearance",
   },
   {
+    id: "app-skin",
+    title: msg("Skin"),
+    to: "/settings/appearance",
+    searchTerms: [msg("background wallpaper image picture photo gif bitmap custom")],
+  },
+  {
     // Prefixed because the slider control already owns the `appearance-contrast` id.
     id: "setting-appearance-contrast",
     title: msg("Contrast"),
