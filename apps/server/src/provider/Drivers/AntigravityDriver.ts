@@ -576,9 +576,15 @@ export const AntigravityDriver: ProviderDriver<
       };
     });
 
+    // Fork: agy's OAuth client comes from the local environment; it is never committed.
+    const cliClientId = processEnvironment.T3_ANTIGRAVITY_OAUTH_CLIENT_ID;
+    const cliClientSecret = processEnvironment.T3_ANTIGRAVITY_OAUTH_CLIENT_SECRET;
     const usage = yield* makeAntigravityUsageProbe({
       profileDirectory,
       authMethod: auth.authMethod,
+      ...(cliClientId && cliClientSecret
+        ? { cliOAuthClient: { clientId: cliClientId, clientSecret: cliClientSecret } }
+        : {}),
     }).pipe(
       Effect.provideService(FileSystem.FileSystem, fileSystem),
       Effect.provideService(Path.Path, path),

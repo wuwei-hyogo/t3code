@@ -74,6 +74,7 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
     keyringSecret?: string;
     /** Reads the OS keyring instead of `keyringSecret`. */
     nativeKeyring?: boolean;
+    cliOAuthClient?: boolean;
   } = {},
 ) {
   const fs = yield* FileSystem.FileSystem;
@@ -141,8 +142,19 @@ const fixture = Effect.fn("AntigravityUsageTest.fixture")(function* (
     profileDirectory,
     authMethod: options.authMethod ?? "oauth-personal",
     ...(options.nativeKeyring ? {} : { readKeyringSecret: Effect.succeed(options.keyringSecret) }),
+    ...(options.cliOAuthClient
+      ? { cliOAuthClient: { clientId: "cli-client-id", clientSecret: "cli-client-secret" } }
+      : {}),
   }).pipe(Effect.provideService(HttpClient.HttpClient, http));
-  return { ...usage, requests, writeToken, tokenPath };
+  const writeCliToken = (expiry: string) =>
+    fs.writeFileString(
+      path.join(profileDirectory, "antigravity-acp", "antigravity-oauth-token"),
+      JSON.stringify({
+        token: { access_token: "access-token", refresh_token: "refresh-cli", expiry },
+        auth_method: "consumer",
+      }),
+    );
+  return { ...usage, requests, writeToken, writeCliToken, tokenPath };
 });
 
 describe("Antigravity subscription limits", () => {
@@ -724,6 +736,48 @@ describe("Antigravity subscription limits", () => {
       });
       expect((yield* expired.probe).unavailable?.reason).toBe("probeFailed");
       expect(expired.requests).toEqual([]);
+    }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
+  );
+
+  it.effect("renews an expired CLI sign-in with agy's OAuth client and reuses it", () =>
+    Effect.gen(function* () {
+      yield* TestClock.setTime(DateTime.toEpochMillis(DateTime.makeUnsafe("2026-10-09T12:00:00Z")));
+      const tokenRequests = (requests: ReadonlyArray<{ url: string; body: string }>) =>
+        requests.filter((request) => request.url.endsWith("/token"));
+
+      const withoutClient = yield* fixture({ missingToken: true });
+      yield* withoutClient.writeCliToken("2026-10-09T11:00:00Z");
+      expect((yield* withoutClient.probe).unavailable?.message).toMatch(/has expired/);
+      expect(withoutClient.requests).toEqual([]);
+
+      const valid = yield* fixture({ missingToken: true, userId: "google-user-1" });
+      yield* valid.writeCliToken("2026-10-09T13:00:00Z");
+      const fromValidToken = yield* valid.probe;
+
+      const renewed = yield* fixture({
+        missingToken: true,
+        cliOAuthClient: true,
+        userId: "google-user-1",
+      });
+      yield* renewed.writeCliToken("2026-10-09T11:00:00Z");
+      const limits = yield* renewed.probe;
+      expect(limits.unavailable).toBeUndefined();
+      expect(limits.windows).toHaveLength(4);
+      expect(limits.credentialFingerprint).toBe(fromValidToken.credentialFingerprint);
+      const [refresh] = tokenRequests(renewed.requests);
+      expect(Object.fromEntries(new URLSearchParams(refresh?.body))).toEqual({
+        client_id: "cli-client-id",
+        client_secret: "cli-client-secret",
+        refresh_token: "refresh-cli",
+        grant_type: "refresh_token",
+      });
+      expect(JSON.stringify(limits)).not.toMatch(/cli-client-secret|refresh-cli|access-token/);
+
+      yield* renewed.probe;
+      expect(tokenRequests(renewed.requests)).toHaveLength(1);
+      yield* TestClock.adjust("1 hour");
+      yield* renewed.probe;
+      expect(tokenRequests(renewed.requests)).toHaveLength(2);
     }).pipe(Effect.scoped, Effect.provide(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))),
   );
 
