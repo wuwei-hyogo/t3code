@@ -114,14 +114,18 @@ const recordTwentyEvents = Effect.gen(function* () {
   }
 });
 
+// Fork: the shipped `layer` sends only approved feedback; most cases cover the delivery beneath it.
+const upstreamLayer = Layer.effect(AnalyticsService.AnalyticsService, AnalyticsService.make);
+
 const analyticsLayerWith = (
   client: HttpClient.HttpClient,
   policy?: ManagedPolicyDocument,
   telemetryEnv: { readonly T3CODE_TELEMETRY_ENABLED?: boolean } = {
     T3CODE_TELEMETRY_ENABLED: true,
   },
+  analyticsLayer = upstreamLayer,
 ) =>
-  AnalyticsService.layer.pipe(
+  analyticsLayer.pipe(
     Layer.provideMerge(
       ServerConfig.ServerConfig.layerTest(process.cwd(), { prefix: "t3-telemetry-retry-" }),
     ),
@@ -364,7 +368,7 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
         prefix: "t3-telemetry-base-",
       });
 
-      const layerTelemetry = AnalyticsService.layer.pipe(Layer.provideMerge(layerServerConfig));
+      const layerTelemetry = upstreamLayer.pipe(Layer.provideMerge(layerServerConfig));
       const layerConfig = ConfigProvider.layer(
         ConfigProvider.fromUnknown({
           T3CODE_TELEMETRY_ENABLED: true,
@@ -501,6 +505,39 @@ it.layer(Layer.mergeAll(NodeServices.layer, NodeCrypto.layer))("AnalyticsService
       }).pipe(Effect.provide(layerRuntime));
 
       assert.deepEqual(capturedPaths, []);
+    }),
+  );
+
+  // Fork: product analytics, owner reports, and unapproved feedback never leave the machine.
+  it.effect("the shipped layer sends only feedback the user approved", () =>
+    Effect.gen(function* () {
+      const sent: Array<string> = [];
+      const client = HttpClient.make((request) =>
+        Effect.gen(function* () {
+          if (request.body._tag === "Uint8Array") {
+            const body = yield* decodeSentBatch(new TextDecoder().decode(request.body.body)).pipe(
+              Effect.orDie,
+            );
+            sent.push(...body.batch.map((event) => event.event));
+          }
+          return yield* respondWithStatus(204)(request);
+        }),
+      );
+
+      yield* Effect.gen(function* () {
+        const analytics = yield* AnalyticsService.AnalyticsService;
+        assert.isFalse(yield* analytics.record("server.boot.heartbeat"));
+        yield* analytics.recordOwners([{ source: "connect", ownerId: "a".repeat(64) }], "server");
+        const feedback = (userRequested: boolean) =>
+          analytics.record("agent.feedback", { userRequested }, { anonymous: true });
+        assert.isFalse(yield* feedback(false));
+        assert.isTrue(yield* feedback(true));
+        yield* analytics.flush;
+      }).pipe(
+        Effect.provide(analyticsLayerWith(client, undefined, undefined, AnalyticsService.layer)),
+      );
+
+      assert.deepEqual(sent, ["agent.feedback"]);
     }),
   );
 });

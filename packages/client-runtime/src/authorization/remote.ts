@@ -60,7 +60,10 @@ export const readClientOwnerParams = Effect.gen(function* () {
     ...(Option.isSome(account) ? { connect: hashTelemetryId(account.value.accountId) } : {}),
     ...(Option.isSome(device) ? { device: hashTelemetryId(device.value) } : {}),
   } satisfies ClientOwnerParams;
-});
+}).pipe(
+  // Fork: owner ids serve only analytics, so clients never send them to an environment.
+  Effect.as<ClientOwnerParams>({}),
+);
 
 export const appendClientConnectionParams = (
   url: URL,
