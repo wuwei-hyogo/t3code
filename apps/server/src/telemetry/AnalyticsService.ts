@@ -388,4 +388,17 @@ export const make = Effect.gen(function* () {
   return AnalyticsService.of({ record, flush, recordOwners });
 });
 
-export const layer = Layer.effect(AnalyticsService, make);
+// Fork: only feedback the user approved in its card is sent; every other event stays on this machine.
+export const layer = Layer.effect(
+  AnalyticsService,
+  Effect.map(make, (service) =>
+    AnalyticsService.of({
+      ...service,
+      record: Effect.fn("AnalyticsService.record")(function* (event, properties, options) {
+        if (event !== "agent.feedback" || properties?.userRequested !== true) return false;
+        return yield* service.record(event, properties, options);
+      }),
+      recordOwners: Effect.fn("AnalyticsService.recordOwners")(function* () {}),
+    }),
+  ),
+);

@@ -10,9 +10,9 @@ import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 
 import * as ManagedPolicy from "../policy/ManagedPolicy.ts";
-import { resolveRelayClientTracingConfig } from "./publicConfig.ts";
 
-const relayClientTracingConfig = resolveRelayClientTracingConfig();
+// Fork: relay traces never leave the machine, whatever the build or environment configures.
+const relayClientTracingConfig = null as RelayTracing.RelayClientTracingConfig | null;
 
 /**
  * `false` once the environment or a managed policy opted out. Until the desktop has read the
