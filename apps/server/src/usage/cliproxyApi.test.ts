@@ -545,7 +545,9 @@ describe("CLIProxyAPI built-in management API", () => {
           body: request.url?.endsWith("/userinfo") ? { id: "google-42" } : antigravitySummary,
         }),
       });
-      const [account] = yield* (yield* test.api).readAccounts(config);
+      const {
+        accounts: [account],
+      } = yield* (yield* test.api).readAccounts(config);
       expect(account?.driver).toBe("antigravity");
       expect(account?.email).toBeUndefined();
       expect(account?.usageLimits.credentialFingerprint).toBe(
@@ -605,7 +607,7 @@ describe("CLIProxyAPI built-in management API", () => {
                 body: antigravitySummary,
               },
       });
-      const result = yield* (yield* test.api).readAccounts(config);
+      const { accounts: result } = yield* (yield* test.api).readAccounts(config);
       expect(result).toHaveLength(1);
       const [account] = result;
       expect(account).toMatchObject({ driver: "antigravity", email: "g@example.com" });
@@ -650,7 +652,9 @@ describe("CLIProxyAPI built-in management API", () => {
             },
           ],
         });
-        const [account] = yield* (yield* test.api).readAccounts(config);
+        const {
+          accounts: [account],
+        } = yield* (yield* test.api).readAccounts(config);
         expect(account?.usageLimits.unavailable?.reason).toBe("probeFailed");
         expect(test.requests.map((request) => request.path)).not.toContain(
           "/v0/management/api-call",
@@ -724,7 +728,7 @@ describe("CLIProxyAPI built-in management API", () => {
       const test = fixture({
         accounts: [
           { id: "kimi.json", auth_index: "k", provider: "kimi-ai" },
-          { id: "gemini.json", auth_index: "g", provider: "antigravity" },
+          { id: "gemini.json", auth_index: "g", provider: "gemini-cli" },
           { id: "other.json", auth_index: "o", provider: "kimi-ai" },
           { id: "off.json", auth_index: "x", provider: "qwen", disabled: true },
         ],
@@ -732,7 +736,7 @@ describe("CLIProxyAPI built-in management API", () => {
       const api = yield* test.api;
       expect(yield* api.readAccounts(config)).toEqual({
         accounts: [],
-        unreadProviders: ["antigravity", "kimi-ai"],
+        unreadProviders: ["gemini-cli", "kimi-ai"],
       });
       expect(test.requests.every((request) => request.path.endsWith("/auth-files"))).toBe(true);
     }),
