@@ -13025,5 +13025,8 @@
   "90bb34cdd7074ac1": "Tint",
   "024f7f468d082637": "Cover the image with the theme color. Higher values keep text easier to read.",
   "55588ce9092f1b0b": "Reset tint to default",
-  "a89b84be45d370ad": "background wallpaper image picture photo gif bitmap custom"
+  "a89b84be45d370ad": "background wallpaper image picture photo gif bitmap custom",
+  "15f20b079cb48a82": "Switch accounts at usage limits",
+  "459f09b353dc06e0": "When an account runs out of usage, continue on the next signed-in account of the same provider. New threads also start there.",
+  "eb548002f3ef74e5": "usage quota rate limit account rotate failover next continue"
 }

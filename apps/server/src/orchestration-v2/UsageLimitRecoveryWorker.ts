@@ -1,9 +1,18 @@
-import { CommandId, MessageId, type OrchestrationV2Command } from "@t3tools/contracts";
+import {
+  CommandId,
+  MessageId,
+  type OrchestrationV2Command,
+  type ProviderInstanceId,
+  type ServerProvider,
+  type ServerSettings as ServerSettingsValue,
+} from "@t3tools/contracts";
+import { nextAccountSelection } from "@t3tools/shared/usageLimits";
 import * as DateTime from "effect/DateTime";
 import * as Effect from "effect/Effect";
 import * as Layer from "effect/Layer";
 import * as Stream from "effect/Stream";
 import type { OrchestrationV2DomainEvent } from "@t3tools/contracts";
+import * as ProviderRegistry from "../provider/ProviderRegistry.ts";
 import * as DueHint from "../scheduling/DueHint.ts";
 import * as Scheduler from "../scheduling/Scheduler.ts";
 import { forkParked } from "../serverActivation.ts";
@@ -78,6 +87,62 @@ export function limitRecoveryCommand(
   };
 }
 
+const DEFAULT_ACCOUNT_LIMIT_MS = 60 * 60 * 1000;
+
+/** Instances that recently stopped a run on a usage limit, keyed by instance and model. */
+export type LimitedAccounts = Map<string, number>;
+
+const limitedAccountKey = (instanceId: ProviderInstanceId, model: string) =>
+  JSON.stringify([instanceId, model]);
+
+/** Provider usage snapshots lag, so a failure marks its account until the reported reset. */
+export function markLimitedAccount(
+  limited: LimitedAccounts,
+  thread: ProjectionStore.ProjectionAccountSwitchCandidate,
+  nowMs: number,
+) {
+  const resetMs = thread.usageLimitResetAt ? Date.parse(thread.usageLimitResetAt) : Number.NaN;
+  limited.set(
+    limitedAccountKey(thread.modelSelection.instanceId, thread.modelSelection.model),
+    Number.isFinite(resetMs) && resetMs > nowMs ? resetMs : nowMs + DEFAULT_ACCOUNT_LIMIT_MS,
+  );
+}
+
+export function accountSwitchCommand(
+  thread: ProjectionStore.ProjectionAccountSwitchCandidate,
+  input: {
+    readonly providers: ReadonlyArray<ServerProvider>;
+    readonly settings: ServerSettingsValue;
+    readonly nowMs: number;
+    readonly limited: LimitedAccounts;
+  },
+): Extract<OrchestrationV2Command, { readonly type: "message.dispatch" }> | null {
+  const { modelSelection } = thread;
+  const target = nextAccountSelection({
+    selection: modelSelection,
+    providers: input.providers,
+    now: input.nowMs,
+    settings: input.settings,
+    projectId: thread.projectId,
+    skip: (instanceId) =>
+      (input.limited.get(limitedAccountKey(instanceId, modelSelection.model)) ?? 0) > input.nowMs,
+  });
+  if (target === null) return null;
+  const identity = `${thread.id}:${thread.latestRunId}`;
+  return {
+    type: "message.dispatch",
+    commandId: CommandId.make(`account-switch:${identity}`),
+    messageId: MessageId.make(`account-switch:${identity}`),
+    threadId: thread.id,
+    modelSelection: target,
+    text: "Continue where you left off.",
+    attachments: [],
+    dispatchMode: { type: "start_immediately" },
+    createdBy: "agent",
+    creationSource: "server",
+  };
+}
+
 // Events that can make a thread a candidate or change its command; streaming items cannot.
 const affectsLimitRecovery = (event: OrchestrationV2DomainEvent) =>
   event.type.startsWith("thread.") ||
@@ -92,6 +157,11 @@ const makeSweep = Effect.gen(function* () {
   const threads = yield* ThreadManagement.ThreadManagementService;
   const orchestrator = yield* Orchestrator.OrchestratorV2;
   const settings = yield* ServerSettings.ServerSettingsService;
+  const providerRegistry = yield* ProviderRegistry.ProviderRegistry;
+  const limitedAccounts: LimitedAccounts = new Map();
+  // Failed runs already marked, and those already switched; a waiting run is retried, not re-marked.
+  const markedRuns = new Set<string>();
+  const switchedRuns = new Set<string>();
   const due = DueHint.make();
   yield* forkParked(
     Stream.runForEach(orchestrator.streamDomainEvents, (event) =>
@@ -105,13 +175,48 @@ const makeSweep = Effect.gen(function* () {
     if (yield* due.isIdle(nowMs)) return;
     const readVersion = yield* due.version;
     const preferences = yield* settings.getSettings;
+    let acted = false;
+    const switched = new Set<string>();
+    if (preferences.autoSwitchLimitedAccounts) {
+      const providers = yield* providerRegistry.getProviders;
+      const limitedThreads = yield* projections.getAccountSwitchCandidates();
+      // Mark every limited account first, so no thread moves onto one that also just ran out.
+      for (const thread of limitedThreads) {
+        const run = `${thread.id}:${thread.latestRunId}`;
+        if (markedRuns.has(run)) continue;
+        markedRuns.add(run);
+        markLimitedAccount(limitedAccounts, thread, nowMs);
+      }
+      for (const thread of limitedThreads) {
+        const run = `${thread.id}:${thread.latestRunId}`;
+        if (switchedRuns.has(run)) continue;
+        const command = accountSwitchCommand(thread, {
+          providers,
+          settings: preferences,
+          nowMs,
+          limited: limitedAccounts,
+        });
+        if (command === null) continue;
+        switchedRuns.add(run);
+        switched.add(thread.id);
+        acted = true;
+        yield* threads.dispatch(command).pipe(
+          Effect.catchCause((cause) =>
+            Effect.logWarning("orchestration-v2.account-switch.dispatch-failed", {
+              threadId: thread.id,
+              cause,
+            }),
+          ),
+        );
+      }
+    }
     const candidates = yield* projections.getLimitRecoveryCandidates({
       now,
       autoResume: preferences.autoResumeLimitedThreads,
       snooze: preferences.snoozeLimitedThreads,
     });
-    let acted = false;
     for (const thread of candidates) {
+      if (switched.has(thread.id)) continue;
       const command = limitRecoveryCommand(
         thread,
         preferences.autoResumeLimitedThreads,

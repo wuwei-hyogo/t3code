@@ -13023,5 +13023,8 @@
   "90bb34cdd7074ac1": "Toning",
   "024f7f468d082637": "Lägger temats färg över bilden. Högre värden gör texten lättare att läsa.",
   "55588ce9092f1b0b": "Återställ toning till standard",
-  "a89b84be45d370ad": "bakgrund bakgrundsbild skin bild foto gif bitmapp egen"
+  "a89b84be45d370ad": "bakgrund bakgrundsbild skin bild foto gif bitmapp egen",
+  "15f20b079cb48a82": "Byt konto vid användningsgränser",
+  "459f09b353dc06e0": "När ett konto når sin användningsgräns fortsätter arbetet på nästa inloggade konto hos samma leverantör. Nya trådar startar också där.",
+  "eb548002f3ef74e5": "användning kvot hastighetsgräns konto rotera byta nästa fortsätt"
 }

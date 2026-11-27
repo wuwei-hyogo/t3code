@@ -9124,6 +9124,19 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
       yield* sql`DELETE FROM orchestration_v2_projection_runs WHERE run_id = ${queuedRunId}`;
       yield* assertSummary("Plan limit reached.", "usage_limit");
       yield* sql`DELETE FROM orchestration_v2_projection_runs WHERE run_id = ${cancelledRunId}`;
+      const switchable = () =>
+        store
+          .getAccountSwitchCandidates()
+          .pipe(Effect.map((rows) => rows.find((row) => row.id === threadId)));
+      const switchCandidate = yield* switchable();
+      assert.equal(switchCandidate?.latestRunId, original.id);
+      assert.deepEqual(switchCandidate?.modelSelection, original.modelSelection);
+      assert.equal(switchCandidate?.usageLimitResetAt, limitItem.failure.resetAt);
+      yield* sql`UPDATE orchestration_v2_projection_threads
+        SET provider_instance_id = 'moved-elsewhere' WHERE thread_id = ${threadId}`;
+      assert.isUndefined(yield* switchable());
+      yield* sql`UPDATE orchestration_v2_projection_threads
+        SET provider_instance_id = ${providerInstanceId} WHERE thread_id = ${threadId}`;
       const [originalRow] = yield* sql<{
         payload_json: string;
       }>`SELECT payload_json FROM orchestration_v2_projection_threads WHERE thread_id = ${threadId}`;
@@ -9142,6 +9155,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
           ),
           archivedAt === null,
         );
+        assert.strictEqual((yield* switchable()) !== undefined, archivedAt === null);
       }
       yield* sql`UPDATE orchestration_v2_projection_threads
         SET payload_json = json_set(payload_json, '$.settledOverride', 'settled')
@@ -9151,6 +9165,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
           (row) => row.id === threadId,
         ),
       );
+      assert.isUndefined(yield* switchable());
       yield* sql`UPDATE orchestration_v2_projection_threads
         SET payload_json = ${originalRow!.payload_json} WHERE thread_id = ${threadId}`;
       yield* sql`UPDATE orchestration_v2_projection_threads SET deleted_at = ${DateTime.formatIso(now)} WHERE thread_id = ${threadId}`;
@@ -9159,6 +9174,7 @@ it.layer(layerTest)("ProjectionStoreV2", (it) => {
           (row) => row.id === threadId,
         ),
       );
+      assert.isUndefined(yield* switchable());
       yield* sql`UPDATE orchestration_v2_projection_threads SET deleted_at = NULL WHERE thread_id = ${threadId}`;
       yield* sql`INSERT INTO orchestration_v2_projection_turn_items
         (turn_item_id, thread_id, run_id, node_id, ordinal, type, status, updated_at, payload_json)

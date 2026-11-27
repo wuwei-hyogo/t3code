@@ -13016,5 +13016,8 @@
   "90bb34cdd7074ac1": "Tönung",
   "024f7f468d082637": "Legt die Designfarbe über das Bild. Höhere Werte halten Text besser lesbar.",
   "55588ce9092f1b0b": "Tönung auf Standard zurücksetzen",
-  "a89b84be45d370ad": "hintergrund hintergrundbild skin bild foto gif bitmap eigenes"
+  "a89b84be45d370ad": "hintergrund hintergrundbild skin bild foto gif bitmap eigenes",
+  "15f20b079cb48a82": "Bei Nutzungslimits Konto wechseln",
+  "459f09b353dc06e0": "Wenn ein Konto sein Nutzungslimit erreicht, mit dem nächsten angemeldeten Konto desselben Anbieters fortfahren. Neue Threads starten ebenfalls dort.",
+  "eb548002f3ef74e5": "Nutzung Kontingent Ratenlimit Konto wechseln rotieren nächstes fortsetzen"
 }

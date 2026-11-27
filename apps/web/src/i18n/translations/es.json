@@ -13011,5 +13011,8 @@
   "90bb34cdd7074ac1": "Tinte",
   "024f7f468d082637": "Cubre la imagen con el color del tema. Los valores más altos facilitan la lectura del texto.",
   "55588ce9092f1b0b": "Restablecer el tinte al valor predeterminado",
-  "a89b84be45d370ad": "fondo pantalla skin imagen foto gif mapa de bits personalizado"
+  "a89b84be45d370ad": "fondo pantalla skin imagen foto gif mapa de bits personalizado",
+  "15f20b079cb48a82": "Cambiar de cuenta al llegar a los límites de uso",
+  "459f09b353dc06e0": "Cuando una cuenta agota su uso, continúa con la siguiente cuenta con sesión iniciada del mismo proveedor. Los nuevos hilos también empiezan allí.",
+  "eb548002f3ef74e5": "uso cuota límite de velocidad cuenta rotar cambiar siguiente continuar"
 }

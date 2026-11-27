@@ -13016,5 +13016,8 @@
   "90bb34cdd7074ac1": "Tonalidade",
   "024f7f468d082637": "Cobre a imagem com a cor do tema. Valores mais altos deixam o texto mais fácil de ler.",
   "55588ce9092f1b0b": "Redefinir a tonalidade para o padrão",
-  "a89b84be45d370ad": "fundo papel de parede skin imagem foto gif bitmap personalizado"
+  "a89b84be45d370ad": "fundo papel de parede skin imagem foto gif bitmap personalizado",
+  "15f20b079cb48a82": "Trocar de conta nos limites de uso",
+  "459f09b353dc06e0": "Quando uma conta esgota o uso, continua na próxima conta conectada do mesmo provedor. Novas threads também começam nela.",
+  "eb548002f3ef74e5": "uso cota limite de taxa conta alternar trocar próxima continuar"
 }
