@@ -13048,5 +13048,8 @@
       "v": "v"
     },
     " more in Linked items"
-  ]
+  ],
+  "15f20b079cb48a82": "Switch accounts at usage limits",
+  "459f09b353dc06e0": "When an account runs out of usage, continue on the next signed-in account of the same provider. New threads also start there.",
+  "eb548002f3ef74e5": "usage quota rate limit account rotate failover next continue"
 }

@@ -13039,5 +13039,8 @@
       "v": "v"
     },
     " de plus dans Éléments associés"
-  ]
+  ],
+  "15f20b079cb48a82": "Changer de compte aux limites d’utilisation",
+  "459f09b353dc06e0": "Quand un compte atteint sa limite d’utilisation, continuer sur le compte connecté suivant du même fournisseur. Les nouveaux fils y démarrent aussi.",
+  "eb548002f3ef74e5": "utilisation quota limite de débit compte rotation basculer suivant continuer"
 }

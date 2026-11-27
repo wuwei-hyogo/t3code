@@ -568,6 +568,9 @@ export function useSettingsRestore(onRestored?: () => void) {
     ...(settings.snoozeLimitedThreads !== DEFAULT_UNIFIED_SETTINGS.snoozeLimitedThreads
       ? [gt("Snooze until limits reset")]
       : []),
+    ...(settings.autoSwitchLimitedAccounts !== DEFAULT_UNIFIED_SETTINGS.autoSwitchLimitedAccounts
+      ? [gt("Switch accounts at usage limits")]
+      : []),
     ...(!Equal.equals(settings.snoozePresets, DEFAULT_UNIFIED_SETTINGS.snoozePresets)
       ? [gt("Snooze options")]
       : []),
@@ -752,6 +755,7 @@ export function useSettingsRestore(onRestored?: () => void) {
       sidebarAutoSettleOnMerge: DEFAULT_UNIFIED_SETTINGS.sidebarAutoSettleOnMerge,
       autoResumeLimitedThreads: DEFAULT_UNIFIED_SETTINGS.autoResumeLimitedThreads,
       snoozeLimitedThreads: DEFAULT_UNIFIED_SETTINGS.snoozeLimitedThreads,
+      autoSwitchLimitedAccounts: DEFAULT_UNIFIED_SETTINGS.autoSwitchLimitedAccounts,
       snoozePresets: DEFAULT_UNIFIED_SETTINGS.snoozePresets,
       responseStreamingMode: DEFAULT_UNIFIED_SETTINGS.responseStreamingMode,
       enableProviderUpdateChecks: DEFAULT_UNIFIED_SETTINGS.enableProviderUpdateChecks,
@@ -2105,6 +2109,24 @@ export function ThreadsSettingsPanel() {
                 updateSettings({ snoozeLimitedThreads: Boolean(checked) })
               }
               aria-label={gt("Snooze until limits reset")}
+            />
+          }
+        />
+        <SettingsRow
+          serverScoped
+          {...setting("auto-switch-limited-accounts")}
+          description={gt(
+            "When an account runs out of usage, continue on the next signed-in account of the same provider. New threads also start there.",
+          )}
+          settingKeys={["autoSwitchLimitedAccounts"]}
+          control={
+            <ScopedSwitch
+              settingKeys={["autoSwitchLimitedAccounts"]}
+              checked={settings.autoSwitchLimitedAccounts}
+              onCheckedChange={(checked) =>
+                updateSettings({ autoSwitchLimitedAccounts: Boolean(checked) })
+              }
+              aria-label={gt("Switch accounts at usage limits")}
             />
           }
         />

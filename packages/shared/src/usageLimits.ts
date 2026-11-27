@@ -76,6 +76,59 @@ export function exhaustedUsageWindow(
   }
 }
 
+function canTakeOver(
+  provider: ServerProvider | undefined,
+  model: string,
+  input: {
+    readonly now: number;
+    readonly settings?: ServerSettings | undefined;
+    readonly projectId?: ProjectId | null | undefined;
+  },
+): provider is ServerProvider {
+  return (
+    provider !== undefined &&
+    provider.enabled &&
+    provider.installed &&
+    provider.auth.status !== "unauthenticated" &&
+    isProviderAvailable(provider) &&
+    !exhaustedUsageWindow(provider, input.now, model) &&
+    (!input.settings ||
+      resolveProjectProviderInstanceEnabled(
+        input.settings,
+        input.projectId ?? null,
+        provider.instanceId,
+      ))
+  );
+}
+
+/** The next instance of the same driver, after the limited one, that can run the same model. */
+export function nextAccountSelection(input: {
+  readonly selection: ModelSelection;
+  readonly providers: readonly ServerProvider[];
+  readonly now: number;
+  readonly settings?: ServerSettings | undefined;
+  readonly projectId?: ProjectId | null | undefined;
+  readonly skip?: ((instanceId: ProviderInstanceId) => boolean) | undefined;
+}): ModelSelection | null {
+  const index = input.providers.findIndex(
+    (entry) => entry.instanceId === input.selection.instanceId,
+  );
+  const current = input.providers[index];
+  if (!current) return null;
+  const rotated = [...input.providers.slice(index + 1), ...input.providers.slice(0, index)];
+  const next = rotated.find(
+    (entry) =>
+      entry.driver === current.driver &&
+      entry.models.some(
+        (model) =>
+          model.slug === input.selection.model || model.aliases?.includes(input.selection.model),
+      ) &&
+      !input.skip?.(entry.instanceId) &&
+      canTakeOver(entry, input.selection.model, input),
+  );
+  return next ? { ...input.selection, instanceId: next.instanceId } : null;
+}
+
 export function resolveNewThreadModelSelection(input: {
   readonly defaultSelection: ModelSelection | null;
   readonly explicitSelection?: ModelSelection | null;
@@ -87,30 +140,25 @@ export function resolveNewThreadModelSelection(input: {
 }) {
   const selection = input.explicitSelection ?? input.defaultSelection;
   const unchanged = { selection, fallback: null };
-  if (input.explicitSelection || !selection || !input.fallbackSelection) return unchanged;
+  const switchAccounts = input.settings?.autoSwitchLimitedAccounts === true;
+  if (input.explicitSelection || !selection || (!input.fallbackSelection && !switchAccounts))
+    return unchanged;
   const provider = input.providers.find((entry) => entry.instanceId === selection.instanceId);
   const window = exhaustedUsageWindow(provider, input.now, selection.model);
-  const fallback = input.providers.find(
-    (entry) => entry.instanceId === input.fallbackSelection?.instanceId,
-  );
-  if (
-    !provider ||
-    !window ||
-    !fallback?.enabled ||
-    !fallback.installed ||
-    fallback.auth.status === "unauthenticated" ||
-    !isProviderAvailable(fallback) ||
-    exhaustedUsageWindow(fallback, input.now, input.fallbackSelection.model) ||
-    (input.settings &&
-      !resolveProjectProviderInstanceEnabled(
-        input.settings,
-        input.projectId ?? null,
-        fallback.instanceId,
-      ))
-  )
-    return unchanged;
+  if (!provider || !window) return unchanged;
+  const fallbackSelection =
+    (switchAccounts ? nextAccountSelection({ ...input, selection }) : null) ??
+    (input.fallbackSelection &&
+    canTakeOver(
+      input.providers.find((entry) => entry.instanceId === input.fallbackSelection?.instanceId),
+      input.fallbackSelection.model,
+      input,
+    )
+      ? input.fallbackSelection
+      : null);
+  if (!fallbackSelection) return unchanged;
   return {
-    selection: input.fallbackSelection,
+    selection: fallbackSelection,
     fallback: { provider, resetsAt: window.resetsAt ?? null },
   };
 }
