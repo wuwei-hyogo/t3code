@@ -2799,6 +2799,14 @@ export default function ChatView(props: ChatViewProps) {
     const fallbackWindow = fallback
       ? `${fallback.provider.instanceId}:${fallback.resetsAt ?? ""}`
       : null;
+    const fallbackProvider = providerStatuses.find(
+      (provider) => provider.instanceId === fallbackSelection?.instanceId,
+    );
+    // Accounts of one driver often share a display name, so a switch names them by sign-in.
+    const accountSwitch =
+      fallbackProvider !== undefined && fallbackProvider.driver === fallback?.provider.driver;
+    const providerLabel = (provider: ServerProvider) =>
+      (accountSwitch ? provider.auth.email : undefined) ?? provider.displayName ?? provider.driver;
     const fallbackItems: ComposerBannerStackItem[] =
       fallback &&
       fallbackSelection &&
@@ -2807,12 +2815,11 @@ export default function ChatView(props: ChatViewProps) {
         ? [
             modelFallbackBannerItem(
               {
-                fallbackModelName:
-                  providerStatuses
-                    .find((provider) => provider.instanceId === fallbackSelection.instanceId)
-                    ?.models.find((model) => model.slug === fallbackSelection.model)?.name ??
-                  fallbackSelection.model,
-                defaultProviderName: fallback.provider.displayName ?? fallback.provider.driver,
+                fallbackModelName: `${
+                  fallbackProvider?.models.find((model) => model.slug === fallbackSelection.model)
+                    ?.name ?? fallbackSelection.model
+                }${accountSwitch && fallbackProvider ? ` · ${providerLabel(fallbackProvider)}` : ""}`,
+                defaultProviderName: providerLabel(fallback.provider),
                 defaultModelName:
                   fallback.provider.models.find((model) => model.slug === defaultSelection.model)
                     ?.name ?? defaultSelection.model,

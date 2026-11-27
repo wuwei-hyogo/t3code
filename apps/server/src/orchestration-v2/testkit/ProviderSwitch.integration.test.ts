@@ -3,6 +3,7 @@ import { historyResponseItems } from "@t3tools/provider-core/server/handoffBudge
 import { assert, describe, it } from "@effect/vitest";
 import {
   CommandId,
+  DEFAULT_SERVER_SETTINGS,
   type ChatAttachment,
   EventId,
   MessageId,
@@ -24,6 +25,7 @@ import {
   ThreadId,
   TurnItemId,
   ProviderDriverKind,
+  type ServerProvider,
 } from "@t3tools/contracts";
 import { derivePendingBackgroundWork } from "@t3tools/shared/orchestrationV2PendingBackgroundWork";
 import * as DateTime from "effect/DateTime";
@@ -60,6 +62,7 @@ import * as ProjectionReplay from "./ProjectionReplay.ts";
 import * as ProjectionStore from "../ProjectionStore.ts";
 import * as ProviderAdapterRegistry from "../ProviderAdapterRegistry.ts";
 import * as ProviderSessionManager from "../ProviderSessionManager.ts";
+import { accountSwitchCommand } from "../UsageLimitRecoveryWorker.ts";
 import { makeProviderFailure } from "@t3tools/provider-core/server/failure";
 import {
   CLAUDE_MODEL_SELECTION,
@@ -5840,6 +5843,133 @@ describe("orchestration v2 provider switching", () => {
           ),
         );
       }),
+  );
+
+  it.live("continues a usage-limited thread on the next account of the same provider", () =>
+    Effect.gen(function* () {
+      const cwd = yield* checkpointWorkspace("account-switch");
+      const capturedTurns = yield* Ref.make<ReadonlyArray<CapturedTurn>>([]);
+      const second = { ...CODEX_MODEL_SELECTION, instanceId: ProviderInstanceId.make("codex-2") };
+      // Each account keeps its own native history, as Antigravity's Google profiles do.
+      const layerRegistry = ProviderAdapterRegistry.layerFromAdapters([
+        makeTestAdapter({
+          instanceId: CODEX_MODEL_SELECTION.instanceId,
+          driver: CODEX_DRIVER,
+          capabilities: CodexProviderCapabilitiesV2,
+          modelSelection: CODEX_MODEL_SELECTION,
+          responseByRunOrdinal: {},
+          capturedTurns,
+          failedRunOrdinals: new Set([1]),
+          failure: makeProviderFailure({
+            message: "You have reached your quota for this period.",
+            class: "usage_limit",
+            code: "QUOTA_EXHAUSTED",
+          }),
+        }),
+        makeTestAdapter({
+          instanceId: second.instanceId,
+          driver: CODEX_DRIVER,
+          capabilities: CodexProviderCapabilitiesV2,
+          modelSelection: second,
+          responseByRunOrdinal: { 2: "Picked up on the second account" },
+          capturedTurns,
+        }),
+      ]);
+      const account = (instanceId: ProviderInstanceId): ServerProvider => ({
+        instanceId,
+        driver: CODEX_DRIVER,
+        enabled: true,
+        installed: true,
+        version: null,
+        status: "ready",
+        auth: { status: "authenticated" },
+        checkedAt: "2026-11-27T00:00:00.000Z",
+        models: [
+          { slug: CODEX_MODEL_SELECTION.model, name: "Codex", isCustom: false, capabilities: null },
+        ],
+        slashCommands: [],
+        skills: [],
+      });
+      let store: ProjectionStore.ProjectionStoreV2Shape | undefined;
+      yield* Effect.gen(function* () {
+        const orchestrator = yield* Orchestrator.OrchestratorV2;
+        const worker = yield* EffectWorker.OrchestrationEffectWorkerV2;
+        const projections = store!;
+        yield* orchestrator.dispatch({
+          type: "thread.create",
+          commandId: CommandId.make("create"),
+          threadId,
+          projectId,
+          createdBy: "user",
+          creationSource: "web",
+          title: "Account switch",
+          modelSelection: CODEX_MODEL_SELECTION,
+          runtimeMode: "full-access",
+          interactionMode: "default",
+          branch: null,
+          worktreePath: cwd,
+        });
+        yield* orchestrator.dispatch({
+          type: "message.dispatch",
+          commandId: CommandId.make("original"),
+          messageId: MessageId.make("original"),
+          threadId,
+          text: "Original work",
+          attachments: [],
+          createdBy: "user",
+          creationSource: "web",
+          dispatchMode: { type: "start_immediately" },
+        });
+        const runStatus = (status: "completed" | "failed", ordinal: number) =>
+          orchestrator.streamStoredEvents.pipe(
+            Stream.filter(
+              ({ event }) =>
+                event.type === "run.updated" &&
+                event.payload.ordinal === ordinal &&
+                event.payload.status === status,
+            ),
+            Stream.runHead,
+          );
+        yield* runStatus("failed", 1);
+        yield* worker.drain();
+        const candidates = yield* projections.getAccountSwitchCandidates();
+        assert.lengthOf(candidates, 1);
+        const command = accountSwitchCommand(candidates[0]!, {
+          providers: [account(CODEX_MODEL_SELECTION.instanceId), account(second.instanceId)],
+          settings: {
+            ...DEFAULT_SERVER_SETTINGS,
+            autoSwitchLimitedAccounts: true,
+            providerInstances: {
+              [CODEX_MODEL_SELECTION.instanceId]: { driver: CODEX_DRIVER, config: {} },
+              [second.instanceId]: { driver: CODEX_DRIVER, config: {} },
+            },
+          },
+          nowMs: Date.parse("2026-11-27T00:00:00.000Z"),
+          limited: new Map(),
+        });
+        assert.isNotNull(command);
+        yield* orchestrator.dispatch(command!);
+        yield* runStatus("completed", 2);
+        yield* worker.drain();
+        const after = yield* orchestrator.getThreadProjection(threadId);
+        const turns = yield* Ref.get(capturedTurns);
+        const resumed = turns.at(-1)!;
+        assert.deepEqual(resumed.modelSelection, second);
+        assert.include(resumed.text, "Continue where you left off.");
+        assert.include(resumed.text, "Original work");
+        assert.deepEqual(after.thread.modelSelection, second);
+        assert.equal(after.runs.at(-1)?.providerInstanceId, second.instanceId);
+        assert.isEmpty(yield* projections.getAccountSwitchCandidates());
+      }).pipe(
+        Effect.provide(
+          ProviderReplayHarness.layerWithRegistry(
+            { name: "account-switch", runtimePolicyOverride: { cwd } },
+            layerRegistry,
+            { wrapProjectionStore: (projections) => (store = projections) },
+          ),
+        ),
+      );
+    }),
   );
 
   it.live("fails an unsupported queued handoff and advances to the next queued provider", () =>

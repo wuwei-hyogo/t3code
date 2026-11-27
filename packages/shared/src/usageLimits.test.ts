@@ -25,6 +25,7 @@ import {
   paceRemainingPercent,
   usesChatGptSharing,
   resolveNewThreadModelSelection,
+  nextAccountSelection,
 } from "./usageLimits.ts";
 import { collectLimitNotices } from "./usageLimitsCopy.ts";
 
@@ -112,6 +113,63 @@ describe("new thread model fallback", () => {
         providers: [limited, { ...available, ...overrides }],
       }).selection,
     ).toEqual(selection);
+  });
+  describe("account switching", () => {
+    const models = [
+      { slug: selection.model, name: "GPT 6.1 Sol", isCustom: false, capabilities: null },
+    ];
+    const account = (id: string, overrides: Partial<ServerProvider> = {}) =>
+      provider({ instanceId: ProviderInstanceId.make(id), models, ...overrides });
+    const first = account("codex", { usageLimits: limited.usageLimits });
+    const settings = {
+      ...DEFAULT_SERVER_SETTINGS,
+      autoSwitchLimitedAccounts: true,
+      providerInstances: Object.fromEntries(
+        ["codex", "codex_1", "codex_2", "codex_4", "claude"].map((id) => [
+          id,
+          { driver: ProviderDriverKind.make("codex"), enabled: true, config: {} },
+        ]),
+      ),
+    };
+    const resolve = (providers: ServerProvider[], overrides = {}) =>
+      resolveNewThreadModelSelection({ ...defaults, providers, settings, ...overrides }).selection;
+
+    it("moves a new thread to the next account before the fallback", () => {
+      expect(resolve([first, account("codex_2"), available])).toEqual({
+        ...selection,
+        instanceId: ProviderInstanceId.make("codex_2"),
+      });
+    });
+    it.each([
+      ["limited", { usageLimits: limited.usageLimits }],
+      ["signed out", { auth: { status: "unauthenticated" as const } }],
+      ["without the model", { models: [] }],
+      ["of another driver", { driver: ProviderDriverKind.make("claudeAgent") }],
+    ])("skips an account that is %s", (_name, overrides) => {
+      expect(resolve([first, account("codex_2", overrides), available])).toEqual(fallback);
+    });
+    it("switches without a fallback model", () => {
+      expect(resolve([first, account("codex_2")], { fallbackSelection: null })).toEqual({
+        ...selection,
+        instanceId: ProviderInstanceId.make("codex_2"),
+      });
+    });
+    it("stays put when the setting is off", () => {
+      expect(
+        resolve([first, account("codex_2")], {
+          fallbackSelection: null,
+          settings: DEFAULT_SERVER_SETTINGS,
+        }),
+      ).toEqual(selection);
+    });
+    it("wraps around to earlier accounts and honors skip", () => {
+      const providers = [account("codex_1"), account("codex_2"), first, account("codex_4")];
+      const next = (skip?: (id: ProviderInstanceId) => boolean) =>
+        nextAccountSelection({ selection, providers, now, settings, skip })?.instanceId;
+      expect(next()).toBe("codex_4");
+      expect(next((id) => id === "codex_4")).toBe("codex_1");
+      expect(next((id) => id !== "codex")).toBeUndefined();
+    });
   });
   it.each([undefined, "invalid"])("treats an unknown reset as exhausted: %s", (resetsAt) => {
     expect(

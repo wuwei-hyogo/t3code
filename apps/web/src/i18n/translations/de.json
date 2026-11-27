@@ -12993,5 +12993,8 @@
   "1af8d12ac21cb183": "Die Ablage fasst {max} Prompts. Stelle einen wieder her oder lösche einen, um Platz zu schaffen; das Eingabefeld wurde unverändert gelassen.",
   "381ceed77cb8b2b3": "{name} stoppen",
   "5b9fda36b610d25c": "Stoppen",
-  "1d372f6d555dde3c": "Alle Geräte stoppen"
+  "1d372f6d555dde3c": "Alle Geräte stoppen",
+  "15f20b079cb48a82": "Bei Nutzungslimits Konto wechseln",
+  "459f09b353dc06e0": "Wenn ein Konto sein Nutzungslimit erreicht, mit dem nächsten angemeldeten Konto desselben Anbieters fortfahren. Neue Threads starten ebenfalls dort.",
+  "eb548002f3ef74e5": "Nutzung Kontingent Ratenlimit Konto wechseln rotieren nächstes fortsetzen"
 }

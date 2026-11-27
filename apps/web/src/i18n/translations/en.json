@@ -13002,5 +13002,8 @@
   "1af8d12ac21cb183": "The stash holds {max} prompts. Restore or delete one to make room; the composer was left as-is.",
   "381ceed77cb8b2b3": "Stop {name}",
   "5b9fda36b610d25c": "Stop",
-  "1d372f6d555dde3c": "Stop all devices"
+  "1d372f6d555dde3c": "Stop all devices",
+  "15f20b079cb48a82": "Switch accounts at usage limits",
+  "459f09b353dc06e0": "When an account runs out of usage, continue on the next signed-in account of the same provider. New threads also start there.",
+  "eb548002f3ef74e5": "usage quota rate limit account rotate failover next continue"
 }

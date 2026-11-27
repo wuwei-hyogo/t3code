@@ -1509,6 +1509,8 @@ export const ServerSettings = Schema.Struct({
   idleCompaction: Schema.optionalKey(IdleCompactionMode),
   snoozeLimitedThreads: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   autoResumeLimitedThreads: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
+  /** At a usage limit, continue on the next signed-in instance of the same provider. */
+  autoSwitchLimitedAccounts: Schema.Boolean.pipe(Schema.withDecodingDefault(Effect.succeed(false))),
   snoozePresets: SnoozePresetSettings.pipe(
     Schema.withDecodingDefault(Effect.succeed(DEFAULT_SNOOZE_PRESETS)),
   ),
@@ -1968,6 +1970,7 @@ export const ServerSettingsPatch = Schema.Struct({
   sidebarAutoSettleKeepPullRequests: Schema.optionalKey(Schema.Boolean),
   sidebarAutoSettleOnMerge: Schema.optionalKey(Schema.Boolean),
   autoResumeLimitedThreads: Schema.optionalKey(Schema.Boolean),
+  autoSwitchLimitedAccounts: Schema.optionalKey(Schema.Boolean),
   snoozeLimitedThreads: Schema.optionalKey(Schema.Boolean),
   snoozePresets: Schema.optionalKey(SnoozePresetSettings),
   hiddenThreadTags: Schema.optionalKey(Schema.Array(Schema.String)),

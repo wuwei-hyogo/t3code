@@ -297,6 +297,14 @@ The environment must be running when the reset arrives; it resumes overdue
 continuations after a restart. Stopping the thread, sending a new message,
 archiving, or settling it prevents a pending continuation from starting.
 
+If you have several accounts of one provider, such as two Antigravity Google
+accounts, enable **Switch accounts at usage limits** in **Settings → Threads**.
+A limited thread then continues on the next signed-in account that has usage
+left, and new threads start there instead of on a limited default. The other
+account cannot resume the provider's own session, so it receives the
+conversation as a [handoff](./portable-handoffs.md). When every account is
+limited, the thread waits for a reset as above.
+
 Choose **Snooze until reset** to hide the thread until its allowance returns.
 Snooze and auto-resume are independent: snooze alone wakes the thread without
 sending a message; enabling both wakes and continues it. **Wake now** cancels

@@ -12988,5 +12988,8 @@
   "1af8d12ac21cb183": "El stash admite {max} prompts. Restaura o elimina uno para hacer sitio; el campo de texto se dejó como estaba.",
   "381ceed77cb8b2b3": "Detener {name}",
   "5b9fda36b610d25c": "Detener",
-  "1d372f6d555dde3c": "Detener todos los dispositivos"
+  "1d372f6d555dde3c": "Detener todos los dispositivos",
+  "15f20b079cb48a82": "Cambiar de cuenta al llegar a los límites de uso",
+  "459f09b353dc06e0": "Cuando una cuenta agota su uso, continúa con la siguiente cuenta con sesión iniciada del mismo proveedor. Los nuevos hilos también empiezan allí.",
+  "eb548002f3ef74e5": "uso cuota límite de velocidad cuenta rotar cambiar siguiente continuar"
 }
